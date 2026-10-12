@@ -1,0 +1,63 @@
+//@version=5
+// Стратегия S (свинг): сетап на 4h, вход на 15m, стоп 4%, тейк 6%, без трейлинга.
+// Те же правила, что у агента (trading-agent/swing_signals.py). Ставить на 15-минутный график.
+// Сетап (закрытая 4h свеча): EMA20 > EMA50, цена > EMA50, RSI(3) < 15 -> лонг; зеркально (RSI(3) > 85) -> шорт.
+// Фильтр BTC: лонги только когда дневной BTC выше своей SMA20, шорты только когда ниже.
+// Сетап живёт 12 часов от открытия 4h свечи. Вход: 15m свеча закрылась выше EMA20 и выше максимума прошлой (лонг).
+strategy("Стратегия S: свинг 4h/15m", overlay=true, initial_capital=10000,
+     default_qty_type=strategy.percent_of_equity, default_qty_value=25,
+     commission_type=strategy.commission.percent, commission_value=0.05)
+
+tfSetup  = input.timeframe("240", "Таймфрейм сетапа")
+rsiLong  = input.float(15, "Лонг: RSI(3) ниже")
+rsiShort = input.float(85, "Шорт: RSI(3) выше")
+ttlHours = input.int(12, "Сетап живёт, часов")
+slPct    = input.float(4.0, "Стоп, %")
+tpPct    = input.float(6.0, "Тейк, %")
+btcSym   = input.symbol("BINANCE:BTCUSDT", "BTC для фильтра")
+useBtc   = input.bool(true, "Фильтр по BTC")
+
+// 4h значения последней закрытой свечи (без перерисовки)
+[e20, e50, c4, r3, t4] = request.security(syminfo.tickerid, tfSetup,
+     [ta.ema(close, 20)[1], ta.ema(close, 50)[1], close[1], ta.rsi(close, 3)[1], time[1]],
+     lookahead = barmerge.lookahead_on)
+// Дневной BTC против SMA20 по закрытым дням
+[btcC, btcMa] = request.security(btcSym, "D", [close[1], ta.sma(close, 20)[1]], lookahead = barmerge.lookahead_on)
+btcUp = btcC > btcMa
+
+longSetup  = e20 > e50 and c4 > e50 and r3 < rsiLong  and (not useBtc or btcUp)
+shortSetup = e20 < e50 and c4 < e50 and r3 > rsiShort and (not useBtc or not btcUp)
+
+var int   setupT    = na
+var int   setupSide = 0
+if (longSetup or shortSetup) and t4 != setupT and strategy.position_size == 0
+    setupT    := t4
+    setupSide := longSetup ? 1 : -1
+
+active = setupSide != 0 and not na(setupT) and time - setupT < ttlHours * 3600 * 1000
+ema15  = ta.ema(close, 20)
+goLong  = active and setupSide == 1  and close > ema15 and close > high[1] and strategy.position_size == 0
+goShort = active and setupSide == -1 and close < ema15 and close < low[1]  and strategy.position_size == 0
+
+if goLong
+    strategy.entry("S лонг", strategy.long)
+    setupSide := 0
+if goShort
+    strategy.entry("S шорт", strategy.short)
+    setupSide := 0
+
+if strategy.position_size > 0
+    strategy.exit("SL/TP", "S лонг", stop = strategy.position_avg_price * (1 - slPct / 100), limit = strategy.position_avg_price * (1 + tpPct / 100))
+if strategy.position_size < 0
+    strategy.exit("SL/TP", "S шорт", stop = strategy.position_avg_price * (1 + slPct / 100), limit = strategy.position_avg_price * (1 - tpPct / 100))
+
+plot(ema15, "EMA20 (15m)", color = color.blue)
+bgcolor(active ? (setupSide == 1 ? color.new(color.green, 90) : color.new(color.red, 90)) : na, title = "Активный сетап")
+plotshape(goLong,  "Вход лонг", shape.triangleup,   location.belowbar, color.green, size = size.small)
+plotshape(goShort, "Вход шорт", shape.triangledown, location.abovebar, color.red,   size = size.small)
+
+// Оповещения: «Создать оповещение» -> условие «Стратегия S» -> «только вызовы функции alert()»
+if goLong
+    alert("Свинг S: ЛОНГ " + syminfo.ticker + " по " + str.tostring(close) + ", стоп -4%, тейк +6%", alert.freq_once_per_bar_close)
+if goShort
+    alert("Свинг S: ШОРТ " + syminfo.ticker + " по " + str.tostring(close) + ", стоп +4%, тейк -6%", alert.freq_once_per_bar_close)
