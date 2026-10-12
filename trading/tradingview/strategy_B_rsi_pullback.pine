@@ -1,0 +1,33 @@
+//@version=5
+// Стратегия B: покупка отката RSI(3). Те же правила, что у агента (trading-agent/mr_signals.py).
+// Использовать на дневном таймфрейме (1D).
+strategy("Стратегия B: откат RSI(3)", overlay=true, initial_capital=10000,
+     default_qty_type=strategy.percent_of_equity, default_qty_value=12.5,
+     commission_type=strategy.commission.percent, commission_value=0.1)
+
+rsiLen    = input.int(3,    "Период RSI")
+entryRsi  = input.float(22, "Вход: RSI ниже")
+exitRsi   = input.float(55, "Выход: RSI выше")
+emaLen    = input.int(100,  "Период EMA тренда")
+vwapLen   = input.int(10,   "Период скользящей VWAP")
+vwapGap   = input.float(1.0, "Цена ниже VWAP на, %")
+stopPct   = input.float(15.0, "Аварийный стоп, %")
+
+rsi    = ta.rsi(close, rsiLen)
+emaT   = ta.ema(close, emaLen)
+vwapN  = math.sum(hlc3 * volume, vwapLen) / math.sum(volume, vwapLen)
+
+entrySignal = rsi < entryRsi and emaT > emaT[5] and close <= vwapN * (1 - vwapGap / 100)
+
+// Вход по открытию следующей свечи (поведение strategy() по умолчанию)
+if entrySignal and strategy.position_size == 0
+    strategy.entry("B лонг", strategy.long)
+
+if strategy.position_size > 0
+    strategy.exit("Стоп", "B лонг", stop = strategy.position_avg_price * (1 - stopPct / 100))
+    if rsi > exitRsi
+        strategy.close("B лонг", comment = "RSI > " + str.tostring(exitRsi))
+
+plot(emaT,  "EMA тренда",  color = color.orange, linewidth = 2)
+plot(vwapN, "VWAP 10 дней", color = color.blue)
+plotshape(entrySignal, "Сигнал", shape.triangleup, location.belowbar, color.green, size = size.tiny)

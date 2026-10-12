@@ -1,0 +1,42 @@
+# Trading
+
+Scripts for the crypto trading project: daily screener, strategy signals,
+backtests, dashboard and the order guard. Market data and orders go through
+the Liquid Co-Invest connector; these scripts only read files and compute.
+
+## Hard rules
+
+- Paper trading only until the owner explicitly allows real money.
+- Futures at 5x leverage, stop-loss at most 9% from entry (liquidation is ~10%).
+- Paper orders may open without the owner's "да" (owner decision 2026-10-12).
+
+`order_guard.py` checks paper mode, leverage and the stop before any order is sent:
+
+```bash
+python3 trading/order_guard.py order.json   # exit 0 = allowed, 1 = refused
+```
+
+## Layout
+
+| Path | What it is |
+| --- | --- |
+| `order_guard.py` | Pre-send check of every order against the hard rules |
+| `screener.py` | Daily screen of the 48-coin universe (`universe.txt`) |
+| `mr_signals.py` | Strategy B, RSI(3) pullback signals |
+| `swing_signals.py` | 4h/15m swing setups |
+| `backtest/` | Backtests and strategy comparison |
+| `backtest/tv/` | TradingView-data engine, ported strategies, live signals (Turtle 2, MACD+EMA50) |
+| `review/` | Idea journal and bull/bear/risk review template |
+| `dashboard/` | Builds the trades page from the journal |
+| `nautilus/` | Nautilus Trader version of the swing strategy |
+| `tradingview/` | Pine scripts of strategies B and S |
+| `docs/` | Daily procedure, strategy notes, backtest reports, lessons |
+| `tests/` | Unit tests |
+
+Data (candles, journal, reports) stays in the project files, not in git.
+
+## Tests
+
+```bash
+python3 -m unittest discover -s trading/tests
+```
