@@ -8,17 +8,13 @@ the Liquid Co-Invest connector; these scripts only read files and compute.
 
 - Paper trading only until the owner explicitly allows real money.
 - Futures at 5x leverage, stop-loss at most 9% from entry (liquidation is ~10%).
-- No order without the owner's explicit "да" for that exact order.
+- Paper orders may open without the owner's "да" (owner decision 2026-10-12).
 
-`order_guard.py` checks all three before any order is sent:
+`order_guard.py` checks paper mode, leverage and the stop before any order is sent:
 
 ```bash
-python3 trading/order_guard.py order.json approval.json   # exit 0 = allowed, 1 = refused
+python3 trading/order_guard.py order.json   # exit 0 = allowed, 1 = refused
 ```
-
-The approval file carries the fingerprint of the exact order the owner
-approved (`order_fingerprint()` in `order_guard.py`); changing size, stop,
-target, leverage or mode invalidates it.
 
 ## Layout
 
