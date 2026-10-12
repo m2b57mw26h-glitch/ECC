@@ -29,6 +29,8 @@ target, leverage or mode invalidates it.
 | `mr_signals.py` | Strategy B, RSI(3) pullback signals |
 | `swing_signals.py` | 4h/15m swing setups |
 | `backtest/` | Backtests and strategy comparison |
+| `backtest/tv/` | TradingView-data engine, ported strategies, live signals (Turtle 2, MACD+EMA50) |
+| `review/` | Idea journal and bull/bear/risk review template |
 | `dashboard/` | Builds the trades page from the journal |
 | `nautilus/` | Nautilus Trader version of the swing strategy |
 | `tradingview/` | Pine scripts of strategies B and S |
@@ -42,9 +44,3 @@ Data (candles, journal, reports) stays in the project files, not in git.
 ```bash
 python3 -m unittest discover -s trading/tests
 ```
-
-## Known gap
-
-`docs/DAILY.md` still sizes baskets at leverage 2 and strategy B at leverage 1
-with a -15% stop. The guard refuses those orders under the current 5x / -9%
-rule, so the procedure needs updating before the next basket.
